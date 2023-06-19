@@ -14,20 +14,20 @@ namespace Decompiler.Ast
             Entry = Program.NativeDB.GetEntry(hash);
             ReturnCount = returnCount;
 
-            var i = 0;
+            int i = 0;
 
             // TODO move this somewhere else!!!!
-            foreach (var arg in arguments)
+            foreach (AstToken arg in arguments)
             {
                 if (arg.GetStackCount() == 1)
                 {
-                    var type = Entry?.GetParamType(i) ?? Types.UNKNOWN;
+                    Types.TypeInfo type = Entry?.GetParamType(i) ?? Types.UNKNOWN;
                     arg.HintType(ref type.GetContainer());
 
                     if (arg is LocalLoad && (Entry?.GetParam(i)?.AutoName ?? false))
-                        function.SetFrameVarAutoName((arg as LocalLoad).Index, new NativeParameterAutoName(Entry.GetParam(i).name));
+                        function.SetFrameVarAutoName((arg as LocalLoad).Index, new NativeParameterAutoName(NativeDB.SanitizeAutoName(Entry.GetParam(i).name)));
                     else if (arg is Local && (Entry?.GetParam(i)?.AutoName ?? false))
-                        function.SetFrameVarAutoName((arg as Local).Index, new NativeParameterAutoName(Entry.GetParam(i).name));
+                        function.SetFrameVarAutoName((arg as Local).Index, new NativeParameterAutoName(NativeDB.SanitizeAutoName(Entry.GetParam(i).name)));
                 }
                 else if (arg.GetStackCount() == 3)
                 {
@@ -45,13 +45,19 @@ namespace Decompiler.Ast
 
         public override ref TypeContainer GetTypeContainer()
         {
-            var type = Entry?.GetReturnType() ?? Types.UNKNOWN;
+            Types.TypeInfo type = Entry?.GetReturnType() ?? Types.UNKNOWN;
 
             return ref type == Types.VOID ? ref Types.UNKNOWN.GetContainer() : ref type.GetContainer();
         }
 
-        public override string GetName() => Name;
+        public override string GetName()
+        {
+            return Name;
+        }
 
-        public override int GetReturnCount() => ReturnCount;
+        public override int GetReturnCount()
+        {
+            return ReturnCount;
+        }
     }
 }

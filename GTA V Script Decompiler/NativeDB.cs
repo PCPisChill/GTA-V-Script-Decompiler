@@ -33,19 +33,28 @@ namespace Decompiler
 
         public NativeHook? NativeHook = null;
 
-        public NativeDBParam? GetParam(int index) => index >= @params.Count ? null : @params[index];
+        public NativeDBParam? GetParam(int index)
+        {
+            return index >= @params.Count ? null : @params[index];
+        }
 
-        public Types.TypeInfo GetParamType(int index) => index > @params.Count - 1 ? Types.UNKNOWN : @params[index].TypeInfo;
+        public Types.TypeInfo GetParamType(int index)
+        {
+            return index > @params.Count - 1 ? Types.UNKNOWN : @params[index].TypeInfo;
+        }
 
         public void SetParamType(int index, Types.TypeInfo type)
         {
-            var param = @params[index];
+            NativeDBParam param = @params[index];
             param.type = type.SingleName;
             param.TypeInfo = type;
             @params[index] = param;
         }
 
-        public Types.TypeInfo GetReturnType() => ReturnTypeInfo;
+        public Types.TypeInfo GetReturnType()
+        {
+            return ReturnTypeInfo;
+        }
 
         public void SetReturnType(Types.TypeInfo type)
         {
@@ -58,6 +67,7 @@ namespace Decompiler
     {
         private Dictionary<string, Dictionary<string, NativeDBEntry>> data;
         private Dictionary<ulong, NativeDBEntry> entries;
+        private static readonly string[] reservedNames = { "int", "float", "bool", "if", "else", "while", "do", "switch", "for", "break" };
 
         public static bool CanBeUsedAsAutoName(string param)
         {
@@ -73,16 +83,21 @@ namespace Decompiler
             if (param == "string")
                 return false;
 
-            foreach (var type in Types.typeInfos)
+            foreach (Types.TypeInfo type in Types.typeInfos)
                 if (type.AutoName == param)
                     return false;
 
             return true;
         }
 
+        public static string SanitizeAutoName(string name)
+        {
+            return reservedNames.Contains(name) ? "_" + name : name;
+        }
+
         public void LoadData()
         {
-            var file = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),
+            string file = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location),
                 "natives.json");
 
             data = File.Exists(file)
@@ -93,15 +108,15 @@ namespace Decompiler
 
             NativeTypeOverride.Initialize();
 
-            foreach (var ns in data)
+            foreach (KeyValuePair<string, Dictionary<string, NativeDBEntry>> ns in data)
             {
-                foreach (var native in ns.Value)
+                foreach (KeyValuePair<string, NativeDBEntry> native in ns.Value)
                 {
-                    var entry = native.Value;
+                    NativeDBEntry entry = native.Value;
                     NativeTypeOverride.Visit(ref entry);
                     entry.@namespace = ns.Key;
 
-                    foreach (var param in entry.@params)
+                    foreach (NativeDBParam param in entry.@params)
                     {
                         param.TypeInfo = Types.GetFromName(param.type);
                         param.AutoName = CanBeUsedAsAutoName(param.name);
@@ -113,9 +128,9 @@ namespace Decompiler
                 }
             }
 
-            foreach (var hook in Program.NativeHooks)
+            foreach (NativeHook hook in Program.NativeHooks)
             {
-                var matching = entries.Where(p => p.Value.name == hook.Native);
+                IEnumerable<KeyValuePair<ulong, NativeDBEntry>> matching = entries.Where(p => p.Value.name == hook.Native);
 
                 if (!matching.Any())
                     continue;
@@ -124,6 +139,9 @@ namespace Decompiler
             }
         }
 
-        public NativeDBEntry? GetEntry(ulong hash) => entries.ContainsKey(hash) ? entries[hash] : null;
+        public NativeDBEntry? GetEntry(ulong hash)
+        {
+            return entries.ContainsKey(hash) ? entries[hash] : null;
+        }
     }
 }
